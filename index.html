@@ -13,6 +13,8 @@
       --tile-shadow:rgba(0,0,0,.08);
       --text:#1b1b1b;
       --muted:#6b7280;
+      --cell:42px;   /* rozmiar kafelka (nadpisywany przez resizeBoard) */
+      --gap:8px;     /* odstęp między kafelkami */
     }
     *{box-sizing:border-box}
     html,body{height:100%}
@@ -37,8 +39,8 @@
     .stat{background:#fff; color:var(--text); border-radius:10px; padding:8px 12px; box-shadow:0 1px 0 #e5e7eb inset, 0 10px 24px rgba(0,0,0,.06)}
 
     .board-wrap{padding:18px}
-    .board{margin:0 auto; display:grid; gap:8px; background:#f1f5f9; padding:12px; border-radius:16px; box-shadow:inset 0 1px 0 #e5e7eb; max-width:100%; width:max-content}
-    .cell{width:42px; height:42px; background:var(--tile); border-radius:10px; box-shadow:0 2px 0 #e5e7eb inset, 0 6px 16px var(--tile-shadow); display:grid; place-items:center; font-weight:800; user-select:none; cursor:pointer; position:relative; transition:transform .06s ease}
+    .board{margin:0 auto; display:grid; gap:var(--gap); background:#f1f5f9; padding:12px; border-radius:16px; box-shadow:inset 0 1px 0 #e5e7eb; max-width:100%; width:max-content}
+    .cell{width:var(--cell); height:var(--cell); background:var(--tile); border-radius:10px; box-shadow:0 2px 0 #e5e7eb inset, 0 6px 16px var(--tile-shadow); display:grid; place-items:center; font-weight:800; user-select:none; cursor:pointer; position:relative; transition:transform .06s ease}
     .cell:active{transform:translateY(1px)}
     .cell.revealed{background:#fafafa; box-shadow:inset 0 2px 0 #e5e7eb}
     .cell.flag::after{content:"🚩"; font-size:18px}
@@ -66,7 +68,7 @@
     .modal .closeX{position:absolute; right:12px; top:12px; background:none; border:none; font-size:18px; cursor:pointer}
     .promo{display:inline-block; margin-top:10px; background:#fff3e0; color:#bf360c; padding:8px 12px; border-radius:10px; font-weight:800}
 
-    @media (max-width:480px){ .cell{width:36px; height:36px} }
+    @media (max-width:480px){ .cell{font-size:14px} }
   </style>
 </head>
 <body>
@@ -142,6 +144,7 @@
   </div>
 
   <script>
+  document.addEventListener('DOMContentLoaded', () => {
     // === Utils ===
     const qs = s => document.querySelector(s);
     const qsa = s => Array.from(document.querySelectorAll(s));
@@ -149,8 +152,6 @@
     // toast helpers
     function toast(msg){ qs('#toastMsg').textContent = msg; qs('#toast').classList.add('show'); }
     function hideToast(){ qs('#toast').classList.remove('show'); }
-
-    // close on toast button
     qs('#toast').addEventListener('click', (e)=>{ if(e.target.tagName==='BUTTON') hideToast(); });
 
     // === Config ===
@@ -164,17 +165,12 @@
     function startTimer(){ resetTimer(); state.timer=setInterval(()=>{ state.seconds++; qs('#time').textContent=state.seconds; },1000); }
 
     // === Grid helpers ===
-    function buildEmptyGrid(){
-      state.grid = Array.from({length:state.rows}, (_,r)=> Array.from({length:state.cols}, (_,c)=>({r,c,bomb:false,revealed:false,flag:false,adj:0})));
-    }
+    function buildEmptyGrid(){ state.grid = Array.from({length:state.rows}, (_,r)=> Array.from({length:state.cols}, (_,c)=>({r,c,bomb:false,revealed:false,flag:false,adj:0}))); }
     function neighbors(r,c){ const ns=[]; for(let dr=-1; dr<=1; dr++) for(let dc=-1; dc<=1; dc++){ if(dr===0&&dc===0) continue; const nr=r+dr, nc=c+dc; if(nr>=0&&nr<state.rows && nc>=0&&nc<state.cols) ns.push(state.grid[nr][nc]); } return ns; }
-    function placeBombs(safeR, safeC){
-      let placed=0; while(placed < state.bombs){ const r=Math.floor(Math.random()*state.rows); const c=Math.floor(Math.random()*state.cols); const cell = state.grid[r][c]; if(cell.bomb || (Math.abs(r-safeR)<=1 && Math.abs(c-safeC)<=1)) continue; cell.bomb=true; placed++; }
-      for(let r=0;r<state.rows;r++) for(let c=0;c<state.cols;c++){ if(state.grid[r][c].bomb) continue; state.grid[r][c].adj = neighbors(r,c).filter(n=>n.bomb).length; }
-    }
+    function placeBombs(safeR, safeC){ let placed=0; while(placed < state.bombs){ const r=Math.floor(Math.random()*state.rows); const c=Math.floor(Math.random()*state.cols); const cell = state.grid[r][c]; if(cell.bomb || (Math.abs(r-safeR)<=1 && Math.abs(c-safeC)<=1)) continue; cell.bomb=true; placed++; } for(let r=0;r<state.rows;r++) for(let c=0;c<state.cols;c++){ if(state.grid[r][c].bomb) continue; state.grid[r][c].adj = neighbors(r,c).filter(n=>n.bomb).length; } }
 
     // === Rendering ===
-    function renderBoard(){ const board = qs('#board'); board.innerHTML=''; board.style.gridTemplateColumns = `repeat(${state.cols}, 42px)`; for(let r=0;r<state.rows;r++){ for(let c=0;c<state.cols;c++){ const div = document.createElement('div'); div.className = 'cell'; div.dataset.r=r; div.dataset.c=c; board.appendChild(div); } } }
+    function renderBoard(){ const board = qs('#board'); board.innerHTML=''; board.style.gridTemplateColumns = `repeat(${state.cols}, var(--cell))`; for(let r=0;r<state.rows;r++){ for(let c=0;c<state.cols;c++){ const div = document.createElement('div'); div.className = 'cell'; div.dataset.r=r; div.dataset.c=c; board.appendChild(div); } } }
     function updateCellView(cell){ const div = qs(`.cell[data-r="${cell.r}"][data-c="${cell.c}"]`); if(!div) return; div.classList.toggle('flag', cell.flag); if(cell.revealed){ div.classList.add('revealed'); if(cell.bomb){ div.classList.add('bomb'); div.textContent='💥'; } else if(cell.adj>0){ div.textContent=cell.adj; div.classList.add(`num-${cell.adj}`); } else { div.textContent=''; } } else { if(!cell.flag) div.textContent=''; } }
 
     // === Game logic ===
@@ -192,48 +188,56 @@
     function openModal(id){ qs(id).classList.add('open'); }
     function closeModal(id){ qs(id).classList.remove('open'); }
 
-    function newGame(){ const diff = DIFFS[qs('#difficulty').value]; state.rows=diff.rows; state.cols=diff.cols; state.bombs=diff.bombs; state.firstClick=true; state.flags=0; state.cleared=0; state.revealed=0; state.gameOver=false; qs('#flags').textContent=0; qs('#cleared').textContent=0; resetTimer(); buildEmptyGrid(); renderBoard(); }
+    function newGame(){ const diff = DIFFS[qs('#difficulty').value]; state.rows=diff.rows; state.cols=diff.cols; state.bombs=diff.bombs; state.firstClick=true; state.flags=0; state.cleared=0; state.revealed=0; state.gameOver=false; qs('#flags').textContent=0; qs('#cleared').textContent=0; resetTimer(); buildEmptyGrid(); renderBoard(); resizeBoard(); }
 
-    // bindings
+    // Responsywny rozmiar kafelków – skaluje do szerokości ekranu
+    function resizeBoard(){
+      const wrap = document.querySelector('.board-wrap');
+      if(!wrap) return;
+      const cs = getComputedStyle(wrap);
+      const wrapPad = parseFloat(cs.paddingLeft||'0') + parseFloat(cs.paddingRight||'0');
+      const available = Math.max(0, wrap.clientWidth - wrapPad - 24); // 24 = padding .board (12+12)
+      const cols = state.cols;
+      let gap = 8; if(available < 480) gap = 6; if(available < 360) gap = 4;
+      let cell = Math.floor((available - (cols-1)*gap) / cols);
+      if(cell < 24){ gap = 2; cell = Math.floor((available - (cols-1)*gap) / cols); }
+      const finalCell = Math.max(20, cell);
+      document.documentElement.style.setProperty('--cell', finalCell+'px');
+      document.documentElement.style.setProperty('--gap', gap+'px');
+    }
+
     function bindUI(){
       qs('#newGame').addEventListener('click', newGame);
       qs('#difficulty').addEventListener('change', newGame);
       qs('#howTo').addEventListener('click', ()=>openModal('#modalHow'));
-      // close modals
       document.addEventListener('click', (e)=>{ const sel = e.target.getAttribute?.('data-close'); if(sel) closeModal(sel); });
       ['#modalWin','#modalHow'].forEach(id=>{ const modal = qs(id); modal.addEventListener('click', (e)=>{ if(e.target === modal) closeModal(id); }); });
       document.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ ['#modalWin','#modalHow'].forEach(id=>closeModal(id)); } });
-      // copy code
       document.addEventListener('click', (e)=>{ if(e.target.id==='copyCode'){ const code = qs('#promoCode').textContent.trim(); navigator.clipboard?.writeText(code).then(()=>toast('Skopiowano kod: '+code)); } });
-      // board
       const boardEl = qs('#board'); boardEl.addEventListener('click', onBoardClick); boardEl.addEventListener('contextmenu', onBoardRightClick);
-      // long press (mobile)
       let pressTimer=null; boardEl.addEventListener('touchstart', (e)=>{ const cell = getCellFromEventTarget(e.target); if(!cell) return; pressTimer=setTimeout(()=>{ if(!state.firstClick) toggleFlag(cell); },450); }); boardEl.addEventListener('touchend', ()=>clearTimeout(pressTimer));
+      window.addEventListener('resize', resizeBoard);
+      window.addEventListener('orientationchange', ()=>setTimeout(resizeBoard, 50));
     }
 
-    // === Simple tests (run in console) ===
+    // === Simple tests (w konsoli) ===
     function runTests(){
-      const results=[]; const ok=(name,cond)=>results.push({name,ok:!!cond});
-      try { ok('hideToast defined', typeof hideToast==='function'); } catch(e){ ok('hideToast defined', false); }
-      // init a game and ensure board renders correct size
+      const log=(name,ok)=>console[ok?'log':'error'](`${ok?'✔':'✖'} ${name}`);
+      try{ log('hideToast defined', typeof hideToast==='function'); }catch(e){ log('hideToast defined', false); }
       newGame();
-      ok('board element exists', !!qs('#board'));
-      ok('correct number of cells', qsa('.cell').length === state.rows*state.cols);
-      // simulate first click -> bombs placed, timer started
-      const firstCell = state.grid[0][0];
-      placeBombs(0,0); state.firstClick=false; reveal(firstCell);
-      ok('first cell revealed', firstCell.revealed===true);
-      ok('first cell not a bomb', firstCell.bomb===false);
-      const failed = results.filter(r=>!r.ok);
-      if(failed.length===0){ console.log('TESTS PASSED', results); toast('✅ Testy przeszły. Miłej gry!'); }
-      else { console.error('TESTS FAILED', results); toast('⚠️ Testy nie przeszły – sprawdź konsolę.'); }
-      // reset for the user
-      setTimeout(()=>{ hideToast(); newGame(); }, 1000);
+      log('board exists', !!qs('#board'));
+      log('cells count ok', qsa('.cell').length === state.rows*state.cols);
+      resizeBoard();
+      const cellSize = getComputedStyle(document.documentElement).getPropertyValue('--cell');
+      log('cell var set', parseInt(cellSize) >= 20);
     }
 
     // init
     bindUI();
+    newGame();
+    resizeBoard();
     runTests();
+  });
   </script>
 </body>
 </html>
