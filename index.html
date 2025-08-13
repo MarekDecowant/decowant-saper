@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Decowant · Saper: Plamy Farby</title>
+  <style>
+    :root{
+      --brand-green:#2e7d32;
+      --brand-orange:#ff6f00;
+      --bg:#f6f7f8;
+      --tile:#ffffff;
+      --tile-shadow:rgba(0,0,0,.08);
+      --text:#1b1b1b;
+      --muted:#6b7280;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif; color:var(--text);
+      background:linear-gradient(135deg,var(--bg),#eceff1);
+      display:flex; align-items:center; justify-content:center; padding:16px;
+    }
+    .app{width:100%; max-width:980px}
+    .card{background:#fff; border-radius:20px; box-shadow:0 20px 60px rgba(0,0,0,.08); overflow:hidden; border:1px solid #e5e7eb}
+    .header{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:18px 22px; background:linear-gradient(90deg,var(--brand-green),#1b5e20); color:#fff}
+    .brand{display:flex; align-items:center; gap:12px}
+    .logo{width:42px; height:42px; border-radius:12px; background:url('https://www.sklepdecowant.pl/environment/cache/images/0_0_productGfx_5646/decowant-logo.png') center/cover no-repeat, radial-gradient(circle at 30% 30%, var(--brand-orange), #ff9800); box-shadow:inset 0 2px 8px rgba(0,0,0,.25)}
+    .title{font-weight:800; letter-spacing:.3px}
+    .subtitle{font-size:12px; opacity:.9}
+    .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center}
+    select,button{appearance:none; border:none; border-radius:12px; padding:10px 14px; font-weight:600; cursor:pointer}
+    select{background:#fff; color:var(--text); box-shadow:0 1px 0 #e5e7eb inset, 0 1px 2px rgba(0,0,0,.06)}
+    button.primary{background:var(--brand-orange); color:#fff; box-shadow:0 10px 20px rgba(255,111,0,.3)}
+    button.ghost{background:rgba(255,255,255,.15); color:#fff; border:1px solid rgba(255,255,255,.35)}
+    .stats{display:flex; gap:14px; align-items:center; font-weight:700}
+    .stat{background:#fff; color:var(--text); border-radius:10px; padding:8px 12px; box-shadow:0 1px 0 #e5e7eb inset, 0 10px 24px rgba(0,0,0,.06)}
+
+    .board-wrap{padding:18px}
+    .board{margin:0 auto; display:grid; gap:8px; background:#f1f5f9; padding:12px; border-radius:16px; box-shadow:inset 0 1px 0 #e5e7eb; max-width:100%; width:max-content}
+    .cell{width:42px; height:42px; background:var(--tile); border-radius:10px; box-shadow:0 2px 0 #e5e7eb inset, 0 6px 16px var(--tile-shadow); display:grid; place-items:center; font-weight:800; user-select:none; cursor:pointer; position:relative; transition:transform .06s ease}
+    .cell:active{transform:translateY(1px)}
+    .cell.revealed{background:#fafafa; box-shadow:inset 0 2px 0 #e5e7eb}
+    .cell.flag::after{content:"🚩"; font-size:18px}
+    .cell.bomb.revealed{background:#ffe4e6}
+
+    .num-1{color:#1976d2}
+    .num-2{color:#2e7d32}
+    .num-3{color:#ef6c00}
+    .num-4{color:#6a1b9a}
+    .num-5{color:#c62828}
+    .num-6{color:#00838f}
+    .num-7{color:#374151}
+    .num-8{color:#000000}
+
+    .footer{display:flex; justify-content:space-between; align-items:center; gap:12px; padding:14px 18px; color:var(--muted); font-size:13px; border-top:1px solid #e5e7eb}
+    .link{color:var(--brand-green); font-weight:700; text-decoration:none}
+
+    .toast{position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:#111827; color:#fff; padding:10px 14px; border-radius:10px; box-shadow:0 10px 30px rgba(0,0,0,.25); opacity:0; pointer-events:none; display:flex; align-items:center; gap:8px; transition:opacity .2s ease}
+    .toast.show{opacity:1; pointer-events:auto}
+    .toast button{background:none; border:none; color:#fff; cursor:pointer; font-size:14px}
+
+    .modal{position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(17,24,39,.5); padding:20px}
+    .modal.open{display:flex}
+    .modal .box{position:relative; background:#fff; border-radius:18px; max-width:520px; width:100%; padding:20px; text-align:center; box-shadow:0 30px 70px rgba(0,0,0,.25)}
+    .modal .closeX{position:absolute; right:12px; top:12px; background:none; border:none; font-size:18px; cursor:pointer}
+    .promo{display:inline-block; margin-top:10px; background:#fff3e0; color:#bf360c; padding:8px 12px; border-radius:10px; font-weight:800}
+
+    @media (max-width:480px){ .cell{width:36px; height:36px} }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="card">
+      <div class="header">
+        <div class="brand">
+          <div class="logo" aria-hidden="true"></div>
+          <div>
+            <div class="title">Decowant · Saper: Plamy Farby</div>
+            <div class="subtitle">Odsłaniaj czyste kafelki. Uważaj na plamy!</div>
+          </div>
+        </div>
+        <div class="controls">
+          <label style="font-size:12px;opacity:.9">Poziom:&nbsp;
+            <select id="difficulty">
+              <option value="easy">Łatwy (8×8 · 10 plam)</option>
+              <option value="medium">Średni (12×12 · 22 plamy)</option>
+              <option value="hard">Trudny (16×16 · 40 plam)</option>
+            </select>
+          </label>
+          <button class="primary" id="newGame">Nowa gra</button>
+          <button class="ghost" id="howTo">Jak grać?</button>
+        </div>
+        <div class="stats">
+          <div class="stat">⏱️ <span id="time">0</span>s</div>
+          <div class="stat">🚩 <span id="flags">0</span></div>
+          <div class="stat">✅ <span id="cleared">0</span></div>
+        </div>
+      </div>
+
+      <div class="board-wrap">
+        <div id="board" class="board"></div>
+      </div>
+
+      <div class="footer">
+        <div>
+          Wygraj rundę, by odblokować kod rabatowy. Kolory i styl nawiązują do marki Decowant.
+        </div>
+        <a class="link" href="https://www.sklepdecowant.pl/" id="shopLink" target="_blank" rel="noopener noreferrer">Przejdź do sklepu</a>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"><span id="toastMsg"></span><button aria-label="Zamknij">✖</button></div>
+
+  <!-- Modal wygranej -->
+  <div id="modalWin" class="modal" role="dialog" aria-modal="true">
+    <div class="box">
+      <button class="closeX" data-close="#modalWin">✖</button>
+      <h2>🎉 Brawo! Czysta ściana bez plam!</h2>
+      <p>Masz nagrodę: kod <span class="promo" id="promoCode">DECOWANT5</span> (−5% na zakupy).</p>
+      <p style="font-size:13px;color:#6b7280">Skopiuj i użyj w koszyku. Kod przykładowy – możesz podmienić na realny.</p>
+      <div style="display:flex; gap:10px; justify-content:center; margin-top:10px">
+        <button class="primary" id="copyCode">Skopiuj kod</button>
+        <button class="ghost" data-close="#modalWin">Zamknij</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal instrukcji -->
+  <div id="modalHow" class="modal" role="dialog" aria-modal="true">
+    <div class="box">
+      <button class="closeX" data-close="#modalHow">✖</button>
+      <h3>Jak grać?</h3>
+      <ol style="text-align:left; line-height:1.6">
+        <li>Kliknij, aby odsłonić kafelek. Liczba pokazuje, ile plam (💥) jest w sąsiedztwie.</li>
+        <li>Prawy przycisk myszy lub długie przytrzymanie – stawia flagę (🚩) na podejrzanych polach.</li>
+        <li>Wygrywasz, gdy odsłonisz wszystkie czyste pola. Przegrywasz, gdy trafisz plamę.</li>
+      </ol>
+      <button class="primary" data-close="#modalHow">Zrozumiałe!</button>
+    </div>
+  </div>
+
+  <script>
+    // === Utils ===
+    const qs = s => document.querySelector(s);
+    const qsa = s => Array.from(document.querySelectorAll(s));
+
+    // toast helpers
+    function toast(msg){ qs('#toastMsg').textContent = msg; qs('#toast').classList.add('show'); }
+    function hideToast(){ qs('#toast').classList.remove('show'); }
+
+    // close on toast button
+    qs('#toast').addEventListener('click', (e)=>{ if(e.target.tagName==='BUTTON') hideToast(); });
+
+    // === Config ===
+    const DIFFS = { easy:{rows:8, cols:8, bombs:10}, medium:{rows:12, cols:12, bombs:22}, hard:{rows:16, cols:16, bombs:40} };
+
+    // === State ===
+    let state = { rows:8, cols:8, bombs:10, grid:[], firstClick:true, flags:0, cleared:0, revealed:0, timer:null, seconds:0, gameOver:false };
+
+    // === Timer ===
+    function resetTimer(){ if(state.timer){ clearInterval(state.timer); } state.seconds=0; qs('#time').textContent=0; }
+    function startTimer(){ resetTimer(); state.timer=setInterval(()=>{ state.seconds++; qs('#time').textContent=state.seconds; },1000); }
+
+    // === Grid helpers ===
+    function buildEmptyGrid(){
+      state.grid = Array.from({length:state.rows}, (_,r)=> Array.from({length:state.cols}, (_,c)=>({r,c,bomb:false,revealed:false,flag:false,adj:0})));
+    }
+    function neighbors(r,c){ const ns=[]; for(let dr=-1; dr<=1; dr++) for(let dc=-1; dc<=1; dc++){ if(dr===0&&dc===0) continue; const nr=r+dr, nc=c+dc; if(nr>=0&&nr<state.rows && nc>=0&&nc<state.cols) ns.push(state.grid[nr][nc]); } return ns; }
+    function placeBombs(safeR, safeC){
+      let placed=0; while(placed < state.bombs){ const r=Math.floor(Math.random()*state.rows); const c=Math.floor(Math.random()*state.cols); const cell = state.grid[r][c]; if(cell.bomb || (Math.abs(r-safeR)<=1 && Math.abs(c-safeC)<=1)) continue; cell.bomb=true; placed++; }
+      for(let r=0;r<state.rows;r++) for(let c=0;c<state.cols;c++){ if(state.grid[r][c].bomb) continue; state.grid[r][c].adj = neighbors(r,c).filter(n=>n.bomb).length; }
+    }
+
+    // === Rendering ===
+    function renderBoard(){ const board = qs('#board'); board.innerHTML=''; board.style.gridTemplateColumns = `repeat(${state.cols}, 42px)`; for(let r=0;r<state.rows;r++){ for(let c=0;c<state.cols;c++){ const div = document.createElement('div'); div.className = 'cell'; div.dataset.r=r; div.dataset.c=c; board.appendChild(div); } } }
+    function updateCellView(cell){ const div = qs(`.cell[data-r="${cell.r}"][data-c="${cell.c}"]`); if(!div) return; div.classList.toggle('flag', cell.flag); if(cell.revealed){ div.classList.add('revealed'); if(cell.bomb){ div.classList.add('bomb'); div.textContent='💥'; } else if(cell.adj>0){ div.textContent=cell.adj; div.classList.add(`num-${cell.adj}`); } else { div.textContent=''; } } else { if(!cell.flag) div.textContent=''; } }
+
+    // === Game logic ===
+    function reveal(cell){ if(cell.revealed || cell.flag || state.gameOver) return; cell.revealed=true; state.revealed++; if(!cell.bomb) state.cleared++; updateCellView(cell); qs('#cleared').textContent = state.cleared; if(cell.bomb){ endGame(false); } else if(cell.adj===0){ neighbors(cell.r, cell.c).forEach(n=>reveal(n)); } checkWin(); }
+    function toggleFlag(cell){ if(cell.revealed || state.gameOver) return; cell.flag = !cell.flag; state.flags += cell.flag ? 1 : -1; qs('#flags').textContent = state.flags; updateCellView(cell); }
+    function revealAllBombs(){ for(let r=0;r<state.rows;r++) for(let c=0;c<state.cols;c++){ const cell=state.grid[r][c]; if(cell.bomb){ cell.revealed=true; updateCellView(cell); } } }
+    function checkWin(){ const safe = state.rows*state.cols - state.bombs; if(state.cleared >= safe && !state.gameOver){ endGame(true); } }
+    function endGame(win){ state.gameOver = true; if(state.timer) clearInterval(state.timer); if(!win){ revealAllBombs(); toast('Aj! Trafiłeś plamę. Spróbuj ponownie.'); } else { openModal('#modalWin'); } }
+
+    // === Events ===
+    function getCellFromEventTarget(target){ const el = target.closest('.cell'); if(!el) return null; const r = +el.dataset.r, c = +el.dataset.c; return state.grid?.[r]?.[c] || null; }
+    function onBoardClick(e){ const cell = getCellFromEventTarget(e.target); if(!cell) return; if(state.firstClick){ placeBombs(cell.r, cell.c); state.firstClick=false; startTimer(); } reveal(cell); }
+    function onBoardRightClick(e){ e.preventDefault(); const cell = getCellFromEventTarget(e.target); if(!cell) return; if(state.firstClick) return; toggleFlag(cell); }
+
+    function openModal(id){ qs(id).classList.add('open'); }
+    function closeModal(id){ qs(id).classList.remove('open'); }
+
+    function newGame(){ const diff = DIFFS[qs('#difficulty').value]; state.rows=diff.rows; state.cols=diff.cols; state.bombs=diff.bombs; state.firstClick=true; state.flags=0; state.cleared=0; state.revealed=0; state.gameOver=false; qs('#flags').textContent=0; qs('#cleared').textContent=0; resetTimer(); buildEmptyGrid(); renderBoard(); }
+
+    // bindings
+    function bindUI(){
+      qs('#newGame').addEventListener('click', newGame);
+      qs('#difficulty').addEventListener('change', newGame);
+      qs('#howTo').addEventListener('click', ()=>openModal('#modalHow'));
+      // close modals
+      document.addEventListener('click', (e)=>{ const sel = e.target.getAttribute?.('data-close'); if(sel) closeModal(sel); });
+      ['#modalWin','#modalHow'].forEach(id=>{ const modal = qs(id); modal.addEventListener('click', (e)=>{ if(e.target === modal) closeModal(id); }); });
+      document.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ ['#modalWin','#modalHow'].forEach(id=>closeModal(id)); } });
+      // copy code
+      document.addEventListener('click', (e)=>{ if(e.target.id==='copyCode'){ const code = qs('#promoCode').textContent.trim(); navigator.clipboard?.writeText(code).then(()=>toast('Skopiowano kod: '+code)); } });
+      // board
+      const boardEl = qs('#board'); boardEl.addEventListener('click', onBoardClick); boardEl.addEventListener('contextmenu', onBoardRightClick);
+      // long press (mobile)
+      let pressTimer=null; boardEl.addEventListener('touchstart', (e)=>{ const cell = getCellFromEventTarget(e.target); if(!cell) return; pressTimer=setTimeout(()=>{ if(!state.firstClick) toggleFlag(cell); },450); }); boardEl.addEventListener('touchend', ()=>clearTimeout(pressTimer));
+    }
+
+    // === Simple tests (run in console) ===
+    function runTests(){
+      const results=[]; const ok=(name,cond)=>results.push({name,ok:!!cond});
+      try { ok('hideToast defined', typeof hideToast==='function'); } catch(e){ ok('hideToast defined', false); }
+      // init a game and ensure board renders correct size
+      newGame();
+      ok('board element exists', !!qs('#board'));
+      ok('correct number of cells', qsa('.cell').length === state.rows*state.cols);
+      // simulate first click -> bombs placed, timer started
+      const firstCell = state.grid[0][0];
+      placeBombs(0,0); state.firstClick=false; reveal(firstCell);
+      ok('first cell revealed', firstCell.revealed===true);
+      ok('first cell not a bomb', firstCell.bomb===false);
+      const failed = results.filter(r=>!r.ok);
+      if(failed.length===0){ console.log('TESTS PASSED', results); toast('✅ Testy przeszły. Miłej gry!'); }
+      else { console.error('TESTS FAILED', results); toast('⚠️ Testy nie przeszły – sprawdź konsolę.'); }
+      // reset for the user
+      setTimeout(()=>{ hideToast(); newGame(); }, 1000);
+    }
+
+    // init
+    bindUI();
+    runTests();
+  </script>
+</body>
+</html>
